@@ -5,8 +5,8 @@ internship_filter.py
 Fetches Summer 2027 internship listings from:
   - https://github.com/SimplifyJobs/Summer2027-Internships
   - https://github.com/vanshb03/Summer2027-Internships
-and filters them down to postings located in one or more US states you specify. No API keys needed -- it just reads the public README.md files.
 
+and filters them down to postings located in one or more US states you specify. No API keys needed -- it just reads the public README.md files.
 
 USAGE EXAMPLES
 ---------------
