@@ -11,7 +11,7 @@ specify. No API keys needed -- it just reads the public README.md files.
 
 USAGE EXAMPLES
 ---------------
-  # Show all CA and NY jobs from both repos, printed to the terminal
+  ### Show all CA and NY jobs from both repos, printed to the terminal
   python3 internship_filter.py --states CA NY
 
   # Also match "Remote" postings
