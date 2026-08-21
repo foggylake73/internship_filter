@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 
+
 import argparse
 import csv
+import os
 import re
 import sys
+from datetime import datetime
 from dataclasses import dataclass, field
 from typing import List, Optional
 
@@ -88,11 +91,14 @@ def extract_states_from_location(location_text: str) -> List[str]:
         if code in US_STATES:
             found.add(code)
 
-    # Bare full state names anywhere in the text (e.g. "Washington")
+    # Bare full state names anywhere in the text (e.g. "Washington"), but skip
+    # this check for text that already reads as "Washington, DC" so the
+    # state Washington (WA) doesn't get matched alongside DC.
     lower_text = text.lower()
-    for name, abbr in NAME_TO_ABBR.items():
-        if re.search(r"\b" + re.escape(name) + r"\b", lower_text):
-            found.add(abbr)
+    if not re.search(r"washington,?\s*d\.?c\.?", lower_text):
+        for name, abbr in NAME_TO_ABBR.items():
+            if re.search(r"\b" + re.escape(name) + r"\b", lower_text):
+                found.add(abbr)
 
     # Known city/region shorthands
     for alias, abbr in CITY_ALIASES.items():
@@ -127,12 +133,14 @@ REPOS = {
     "simplify": {
         "name": "SimplifyJobs",
         "raw_url_template": "https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/{branch}/README.md",
-        "branches": ["dev", "main", "master"],
+        # "dev" is this repo's primary branch. It has no "main" branch, only "master" as a fallback.
+        "branches": ["dev", "master"],
     },
     "vansh": {
         "name": "vanshb03",
         "raw_url_template": "https://raw.githubusercontent.com/vanshb03/Summer2027-Internships/{branch}/README.md",
-        "branches": ["main", "dev", "master"],
+        # "dev" is this repo's primary branch too; "main" and "master" both exist as fallbacks.
+        "branches": ["dev", "main", "master"],
     },
 }
 
@@ -330,17 +338,33 @@ def filter_jobs(jobs: List[Job], wanted_states: List[str], include_remote: bool)
 
 
 def print_table(jobs: List[Job]) -> None:
+    for line in format_table_lines(jobs):
+        print(line)
+
+
+def format_table_lines(jobs: List[Job]) -> List[str]:
+    """Build the same lines print_table() prints, but as a list of strings
+    so they can be sent to the terminal or a file."""
+    lines = []
     if not jobs:
-        print("No matching jobs found.")
-        return
+        lines.append("No matching jobs found.")
+        return lines
     for job in jobs:
         cat = f" [{job.category}]" if job.category else ""
         states = ", ".join(job.states) if job.states else "?"
-        print(f"[{job.source}]{cat} {job.company} — {job.role}")
-        print(f"    Location(s): {job.raw_location}  (matched: {states})")
-        print(f"    Posted: {job.posted}    Apply: {job.link}")
-        print()
-    print(f"Total: {len(jobs)} matching job(s)")
+        lines.append(f"[{job.source}]{cat} {job.company} — {job.role}")
+        lines.append(f"    Location(s): {job.raw_location}  (matched: {states})")
+        lines.append(f"    Posted: {job.posted}    Apply: {job.link}")
+        lines.append("")
+    lines.append(f"Total: {len(jobs)} matching job(s)")
+    return lines
+
+
+def write_txt(jobs: List[Job], path: str) -> None:
+    lines = format_table_lines(jobs)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+    print(f"Wrote {len(jobs)} job(s) to {path}")
 
 
 def write_csv(jobs: List[Job], path: str) -> None:
@@ -368,8 +392,8 @@ def main():
     parser.add_argument("--states", nargs="+", help="State abbreviations or names to filter by, e.g. CA NY 'New York'")
     parser.add_argument("--include-remote", action="store_true", help="Also include postings marked Remote")
     parser.add_argument("--repo", choices=["simplify", "vansh", "both"], default="both", help="Which repo(s) to search")
-    parser.add_argument("--output", choices=["table", "csv"], default="table", help="Output format")
-    parser.add_argument("--outfile", default="filtered_jobs.csv", help="CSV output path (used with --output csv)")
+    parser.add_argument("--output", choices=["table", "csv", "txt"], default="table", help="Output format")
+    parser.add_argument("--outfile", default="filtered_jobs", help="Base name for the output file (folder + timestamp + extension are added automatically)")
     parser.add_argument("--list-states", action="store_true", help="Print all recognized state codes/names and exit")
     args = parser.parse_args()
 
@@ -409,8 +433,15 @@ def main():
 
     matched = filter_jobs(all_jobs, wanted_states, args.include_remote)
 
-    if args.output == "csv":
-        write_csv(matched, args.outfile)
+    if args.output in ("csv", "txt"):
+        os.makedirs("output", exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        ext = args.output
+        full_path = os.path.join("output", f"{args.outfile}_{timestamp}.{ext}")
+        if args.output == "csv":
+            write_csv(matched, full_path)
+        else:
+            write_txt(matched, full_path)
     else:
         print_table(matched)
 
