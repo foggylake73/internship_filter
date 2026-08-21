@@ -25,6 +25,4 @@ USAGE EXAMPLES
   ### See every state abbreviation/name this script understands
   python3 internship_filter.py --list-states
 
-Full state names work too ("--states California 'New York'"), and a
-handful of common city shorthands used in these lists (NYC, SF, LA, DC,
-Bay Area) are automatically mapped to their state.
+Full state names work too ("--states California 'New York'"), and a handful of common city shorthands used in these lists (NYC, SF, LA, DC, Bay Area) are automatically mapped to their state.
